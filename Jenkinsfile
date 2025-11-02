@@ -17,12 +17,11 @@ pipeline {
             steps {
                 echo '✅ Installing dependencies...'
                 sh '''
-                python3 -m venv venv
-                . venv/bin/activate
                 pip install --break-system-packages -r requirements.txt
                 '''
             }
         }
+
 
         stage('Docker Build & Push') {
             steps {
