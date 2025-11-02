@@ -1,50 +1,48 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    DOCKER_IMAGE = "your_dockerhub_username/python-demo"
-  }
-
-  stages {
-    stage('Checkout') {
-      steps {
-        echo '✅ Checking out code...'
-        checkout scm
-      }
+    environment {
+        DOCKER_IMAGE = "mahammadsahiltricon/python-demo"   // replace with your Docker Hub username
     }
 
-    stage('Build') {
-      steps {
-        echo '✅ Installing dependencies...'
-        bat 'python --version'
-        bat 'pip install -r requirements.txt'
-      }
-    }
-
-    stage('Docker Build & Push') {
-      steps {
-        script {
-          echo '🐳 Building Docker image...'
-          bat "docker build -t %DOCKER_IMAGE% ."
-
-          echo '🔐 Logging in to Docker Hub...'
-          withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-          }
-
-          echo '📦 Pushing image to Docker Hub...'
-          bat "docker push %DOCKER_IMAGE%"
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "✅ Checking out code..."
+                checkout scm
+            }
         }
-      }
-    }
-  }
 
-  post {
-    success {
-      echo '✅ Build and push completed successfully!'
+        stage('Build') {
+            steps {
+                echo "✅ Installing dependencies..."
+                sh 'pip install -r requirements.txt'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            environment {
+                DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials') // use your Jenkins credentials ID
+            }
+            steps {
+                echo "🐳 Building Docker image..."
+                sh "docker build -t ${DOCKER_IMAGE}:latest ."
+
+                echo "🔑 Logging in to Docker Hub..."
+                sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
+
+                echo "📤 Pushing image to Docker Hub..."
+                sh "docker push ${DOCKER_IMAGE}:latest"
+            }
+        }
     }
-    failure {
-      echo '❌ Build or push failed!'
+
+    post {
+        success {
+            echo "✅ Build and push completed successfully!"
+        }
+        failure {
+            echo "❌ Build or push failed!"
+        }
     }
-  }
 }
