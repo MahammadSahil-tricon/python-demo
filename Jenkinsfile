@@ -2,47 +2,48 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "mahammadsahiltricon/python-demo"   // replace with your Docker Hub username
+        DOCKER_IMAGE = "your_dockerhub_username/python-demo"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo "✅ Checking out code..."
+                echo '✅ Checking out code...'
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                echo "✅ Installing dependencies..."
-                sh 'pip install -r requirements.txt'
+                echo '✅ Installing dependencies...'
+                sh '''
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --break-system-packages -r requirements.txt
+                '''
             }
         }
 
         stage('Docker Build & Push') {
-            environment {
-                DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials') // use your Jenkins credentials ID
-            }
             steps {
-                echo "🐳 Building Docker image..."
-                sh "docker build -t ${DOCKER_IMAGE}:latest ."
-
-                echo "🔑 Logging in to Docker Hub..."
-                sh "echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin"
-
-                echo "📤 Pushing image to Docker Hub..."
-                sh "docker push ${DOCKER_IMAGE}:latest"
+                echo '🐳 Building and pushing Docker image...'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker build -t $DOCKER_IMAGE .
+                    docker push $DOCKER_IMAGE
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Build and push completed successfully!"
+            echo '✅ Build and push successful!'
         }
         failure {
-            echo "❌ Build or push failed!"
+            echo '❌ Build or push failed!'
         }
     }
 }
